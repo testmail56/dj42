@@ -1,0 +1,78 @@
+#views.py
+from course_registration.models import Student
+from django.http import HttpResponse
+import csv
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+def generate_csv(request):
+    # Retrieve all student objects from the database
+    students = Student.objects.all()
+    # Create an HTTP response with content type 'text/csv'
+    response = HttpResponse(content_type='text/csv')
+    # Set the content disposition header to specify the filename for download
+    response['Content-Disposition'] = 'attachment; filename="students.csv"'
+    # Create a CSV writer object
+    writer = csv.writer(response)
+    # Write the header row
+    writer.writerow(['ID', 'Name', 'Date of Birth', 'Email'])
+    # Write each student's information to a row in the CSV file
+    for student in students:
+        writer.writerow([student.id, student.name,
+        student.date_of_birth, student.email])
+    # Return the HTTP response containing the CSV file
+    return response
+def generate_pdf(request):
+    # Retrieve all student objects from the database
+    students = Student.objects.all()
+    # Create a BytesIO buffer to store the PDF content
+    buffer = BytesIO()
+    # Create a canvas object with letter size (8.5x11 inches)
+    p = canvas.Canvas(buffer, pagesize=letter)
+    # Set the title for the PDF document
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 750, "Student List")
+    # Set the starting y-coordinate for student information
+    y = 700
+    # Iterate over each student and add their information to the PDF
+    for student in students:
+    # Set font size and add student information to the PDF
+        p.setFont("Helvetica", 12)
+        p.drawString(
+        100, y, f"ID: {student.id}, Name: {student.name}, DoB: {student.date_of_birth}, Email: 
+        {student.email}")
+    # Move to the next line
+        y -= 20
+    # Save the PDF document
+    p.showPage()
+    p.save()
+    # Move the buffer's cursor to the beginning
+    buffer.seek(0)
+    # Create an HTTP response with content type 'application/pdf'
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    # Set the content disposition header to specify the filename for download
+    response['Content-Disposition'] = 'attachment; filename="students.pdf"'
+    # Return the HTTP response containing the PDF file
+    return response
+
+#urls.py (generate/urls.py)
+from django.urls import path
+from . import views
+urlpatterns = [
+ path('generate_csv/', views.generate_csv, name='generate_csv'),
+ path('generate_pdf/', views.generate_pdf, name='generate_pdf'),
+]
+
+
+#urls.py (myproject/urls.py)
+from django.contrib import admin
+from django.urls import path, include
+urlpatterns = [
+ path("", include("myapp.urls")),
+ path("admin/", admin.site.urls),
+ path('', include('website_pages.urls')),
+ path('fruits_and_students/', include('fruits_and_students.urls')),
+ path('registration/', include('course_registration.urls')),
+ path('', include('generate.urls')),
+]
+
